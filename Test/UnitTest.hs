@@ -63,6 +63,7 @@ import System.Directory
 import System.FilePath
 import System.Process
 import System.IO
+import System.Timeout
 import System.IO.Unsafe
 
 import Test.QuickCheck
@@ -258,6 +259,7 @@ run_test_cases_with :: (Pre,IsTestCase testCase)
                     -> IO Bool
 run_test_cases_with xs opts = do
         let args = execState opts stdArgs
+        setNumCapabilities 8
         swapMVar failure_number 0
         c        <- runReaderT (makeCase Nothing xs) args
         ref      <- newIORef []
@@ -288,7 +290,7 @@ test_suite_string cs' ut = do
             let cs = fromMaybe cs' mli
             putLn ("+- " ++ title)
             r <- liftIO $ catch 
-                (Right <$> (liftIO . evaluate . force =<< test)) 
+                (maybe (Left "TIMEOUT") Right <$> (timeout 5000000 $ liftIO . evaluate . force =<< test)) 
                 (\e -> return $ Left $ show (e :: SomeException))
             case r of
                 Right (r,printLog) -> 
